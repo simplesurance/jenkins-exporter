@@ -1,7 +1,8 @@
 export GO111MODULE=on
 export GOFLAGS=-mod=vendor
+
 BIN = jenkins-exporter
-SRC = cmd/jenkins-exporter/main.go
+SRC = main.go
 
 default: all
 
