@@ -8,4 +8,4 @@ default: all
 
 all:
 	$(info * compiling $(BIN))
-	@CGO_ENABLED=0 go build -a -ldflags '-extldflags "-static"' -o $(BIN) $(SRC)
+	@CGO_ENABLED=0 go build -ldflags '-extldflags "-static"' -o $(BIN) $(SRC)
