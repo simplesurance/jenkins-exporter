@@ -310,8 +310,6 @@ func main() {
 	http.Handle("/", promhttp.Handler())
 	go func() {
 		logger.Printf("prometheus http server listening on %s", *listenAddr)
-		// TODO: should we also or only listen on / instead of on
-		// /metrics? Its easier to find
 		err := http.ListenAndServe(*listenAddr, nil)
 		if err != http.ErrServerClosed {
 			logger.Fatal("prometheus http server terminated:", err.Error())
