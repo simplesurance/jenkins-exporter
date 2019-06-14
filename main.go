@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jamiealquiza/envy"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/simplesurance/jenkins-exporter/internal/cli"
@@ -295,6 +296,7 @@ func validateFlags() {
 func main() {
 	logger = log.New(os.Stderr, "", log.LstdFlags)
 
+	envy.Parse("JE")
 	flag.Parse()
 	if *printVersion {
 		fmt.Printf("version: %s\n", version)
