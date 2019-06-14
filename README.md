@@ -10,13 +10,13 @@ It provides the following Prometheus metrics:
 - Summary Metric: `jenkins_exporter_job_duration_seconds`
   - Labels:
     - result
-  - jenkins_job: the name of the Jenkins Job
-  - type: type of recorded duration, one of:
-    - blocked_time
-    - buildable_time
-    - building_duration
-    - executing_time
-    - waiting_time
+    - jenkins_job: the name of the Jenkins Job
+    - type: type of recorded duration, one of:
+      - blocked_time
+      - buildable_time
+      - building_duration
+      - executing_time
+      - waiting_time
 
 By default metrics are recorded for every finished Jenkins build.
 The jobs for that builds are recorded can be limited with the
