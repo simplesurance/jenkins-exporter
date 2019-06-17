@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -34,7 +35,8 @@ const (
 	waitingTimeMetricDesc   = "Time spent in the queue while waiting"
 )
 
-var logger *log.Logger
+var logger = log.New(os.Stderr, "", 0)
+var debugLogger = log.New(ioutil.Discard, "", 0)
 
 var (
 	listenAddr = flag.String("listen-addr", ":8123", "Listening address of the metric HTTP server")
@@ -57,6 +59,7 @@ var (
 	recordExecutionTime    = flag.Bool("enable-execution-time-metric", false, "record the execution_time metric"+executionTimeMetricDesc) // no '\n' because executionTimeMetricDesc is an empty strinng
 	recordWaitingTime      = flag.Bool("enable-waiting-time-metric", false, "record the waiting_time metric\n"+waitingTimeMetricDesc)
 	printVersion           = flag.Bool("version", false, "print the version and exit")
+	debug                  = flag.Bool("debug", false, "enable debug mode")
 )
 
 func init() {
@@ -198,11 +201,11 @@ func fetchAndRecord(clt *jenkins.Client, store *store.Store, collector *promethe
 			// previous run.
 
 			store.Set(job, builds[0].ID)
-			logger.Printf("%s: seen the first time, skipping existing builds, highest build ID: %d", job, builds[0].ID)
+			debugLogger.Printf("%s: seen the first time, skipping existing builds, highest build ID: %d", job, builds[0].ID)
 			continue
 		}
 		if highestID > builds[0].ID {
-			logger.Printf("%s: highest job ID on jenkins server is higher then the stored one, resetting ID to: %d", job, builds[0].ID)
+			debugLogger.Printf("%s: highest job ID on jenkins server is higher then the stored one, resetting ID to: %d", job, builds[0].ID)
 			store.Set(job, builds[0].ID)
 		}
 
@@ -217,12 +220,10 @@ func fetchAndRecord(clt *jenkins.Client, store *store.Store, collector *promethe
 		}
 		if builds[0].ID > highestID {
 			logger.Printf("%s: recorded metrics for %d build(s), new highest build ID: %d", job, builds[0].ID-highestID, builds[0].ID)
-			logger.Printf("%s: highest seen build ID is %d", job, builds[0].ID)
+			debugLogger.Printf("%s: highest seen build ID is %d", job, builds[0].ID)
 			store.Set(job, builds[0].ID)
 		}
 	}
-
-	logger.Printf("recorded metrics for %d build(s)", recordCnt)
 
 	return nil
 }
@@ -294,8 +295,6 @@ func validateFlags() {
 }
 
 func main() {
-	logger = log.New(os.Stderr, "", log.LstdFlags)
-
 	envy.Parse("JE")
 	flag.Parse()
 	if *printVersion {
@@ -304,6 +303,11 @@ func main() {
 	}
 
 	validateFlags()
+
+	if *debug {
+		debugLogger.SetOutput(os.Stderr)
+	}
+
 	logConfiguration()
 
 	pollInterval := time.Duration(*pollIntervalSec) * time.Second
@@ -325,7 +329,7 @@ func main() {
 	collector := prometheus.NewCollector(*prometheusNamespace, nil)
 	clt := jenkins.NewClient(*jenkinsURL).
 		WithAuth(*jenkinsUsername, *jenkinsPassword).
-		WithLogger(logger).
+		WithLogger(debugLogger).
 		WithTimeout(timeout)
 
 	for {
