@@ -298,7 +298,7 @@ func main() {
 	envy.Parse("JE")
 	flag.Parse()
 	if *printVersion {
-		fmt.Printf("version: %s\n", version)
+		fmt.Printf("%s\n", version)
 		os.Exit(0)
 	}
 
