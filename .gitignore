@@ -21,3 +21,4 @@
 
 *.state.json
 /jenkins-exporter
+release/
