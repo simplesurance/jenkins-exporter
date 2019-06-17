@@ -33,6 +33,6 @@ dirty_worktree_check:
 release: clean dirty_worktree_check release_bin
 	@echo
 	@echo next steps:
-	@echo - git tag v$$(release/jenkins-exporter-linux_amd64 -version)
+	@echo - git tag v$$($(RELEASE_BIN) -version)
 	@echo - git push --tags
 	@echo - upload $$(ls release/*) files
