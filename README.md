@@ -27,16 +27,28 @@ See `./jenkins-exporter -help` for more information.
 
 ## Installation ##
 
-### go get ##
+### Binary ###
+
+#### go get ####
 
 ```
 go get -u github.com/simplesurance/jenkins-exporter
 ```
 
-### git clone ###
+#### git clone #####
 
 ```
 git clone --depth 1 https://github.com/simplesurance/jenkins-exporter.git jenkins-exporter
 cd jenkins-exporter
 make
 ```
+
+Then copy the jenkins-exporter into your `$PATH`.
+
+### As Systemd service ###
+
+1. Install `jenkins-exporter` to `/usr/local/bin`
+2. `cp dist/etc/default/jenkins-exporter /etc/default/`
+3. Configure the jenkins-exporter by editing `/etc/default/jenkins-exporter`
+4. `cp dist/etc/systemd/system/jenkins-exporter.service /etc/systemd/system`
+5. `systemctl daemon-reload && systemctl enable jenkins-exporter && systemctl start jenkins-exporter`

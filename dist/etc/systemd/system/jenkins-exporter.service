@@ -1,0 +1,14 @@
+[Unit]
+Description=Jenkins-Exporter
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+ExecStart=/usr/local/bin/jenkins-exporter -state-file ${STATE_DIRECTORY}/state.json
+StateDirectory=jenkins-exporter/
+EnvironmentFile=/etc/default/jenkins-exporter
+DynamicUser=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

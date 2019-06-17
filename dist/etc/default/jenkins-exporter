@@ -1,0 +1,4 @@
+JE_JENKINS_URL="https://my-jenkins-server.local"
+JE_JENKINS_USER="guest"
+JE_JENKINS_PASSWORD="guest"
+JE_LISTEN_ADDR=":8123"
