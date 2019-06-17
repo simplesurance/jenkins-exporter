@@ -29,6 +29,10 @@ See `./jenkins-exporter -help` for more information.
 
 ### Binary ###
 
+#### Download Release Binary ####
+
+Download a release binary from: <https://github.com/simplesurance/jenkins-exporter/releases>.
+
 #### go get ####
 
 ```
@@ -45,7 +49,7 @@ make
 
 Then copy the jenkins-exporter into your `$PATH`.
 
-### As Systemd service ###
+### As systemd Service ###
 
 1. Install `jenkins-exporter` to `/usr/local/bin`
 2. `cp dist/etc/default/jenkins-exporter /etc/default/`
