@@ -24,7 +24,7 @@ import (
 
 const (
 	appName = "jenkins-exporter"
-	version = "0.1"
+	version = "0.2"
 )
 
 const (
@@ -297,6 +297,7 @@ func validateFlags() {
 func main() {
 	envy.Parse("JE")
 	flag.Parse()
+
 	if *printVersion {
 		fmt.Printf("%s\n", version)
 		os.Exit(0)
@@ -332,13 +333,14 @@ func main() {
 		WithLogger(debugLogger).
 		WithTimeout(timeout)
 
+	// create the counter with a 0  counter
+	collector.CounterAdd("errors", 0, "jenkins api fetch errors", map[string]string{"type": "jenkins_api"})
+
 	for {
 		err := fetchAndRecord(clt, stateStore, collector)
 		if err != nil {
 			log.Printf("fetching and recording builds metrics failed: %s", err)
-			if _, ok := err.(*jenkins.ErrHTTPRequestFailed); !ok {
-				os.Exit(1)
-			}
+			collector.CounterAdd("errors", 1, "jenkins api fetch errors", map[string]string{"type": "jenkins_api"})
 		}
 
 		logger.Printf("fetching and recording the next build metrics in %s", pollInterval)
