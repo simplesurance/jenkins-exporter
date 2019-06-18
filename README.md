@@ -17,9 +17,14 @@ It provides the following Prometheus metrics:
       - building_duration
       - executing_time
       - waiting_time
+- Counter Metric: `jenkins_exporter_errors`  
+  Counts the number of errors the jenkins-exporter encountered when fetching
+  informations from the Jenkins API.
+  - type:
+    - jenkins_api
 
-By default metrics are recorded for every finished Jenkins build.
-The jobs for that builds are recorded can be limited with the
+By default metrics are recorded for every finished Jenkins build. The Jenkins
+jobs for that builds are recorded can be limited with the
 `--jenkins-job-whitelist` command-line parameter.
 The duration types that are recorded can also be configured via a commandline
 parameter.

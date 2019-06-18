@@ -12,6 +12,7 @@ type Collector struct {
 	namespace   string
 	summaries   map[string]*prometheus.SummaryVec
 	histograms  map[string]*prometheus.HistogramVec
+	counters    map[string]*prometheus.CounterVec
 	constLabels prometheus.Labels
 }
 
@@ -20,8 +21,30 @@ func NewCollector(namespace string, constLabels map[string]string) *Collector {
 		namespace:   namespace,
 		summaries:   map[string]*prometheus.SummaryVec{},
 		histograms:  map[string]*prometheus.HistogramVec{},
+		counters:    map[string]*prometheus.CounterVec{},
 		constLabels: constLabels,
 	}
+}
+
+func (c *Collector) CounterAdd(key string, cnt float64, help string, labels map[string]string) {
+	s, exist := c.counters[key]
+	if !exist {
+		s = prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace:   c.namespace,
+				Name:        sanitize(key),
+				ConstLabels: c.constLabels,
+				Help:        help,
+			},
+			labelNames(labels),
+		)
+
+		prometheus.MustRegister(s)
+
+		c.counters[key] = s
+	}
+
+	s.With(labels).Add(cnt)
 }
 
 func (c *Collector) Summary(key string, val float64, help string, labels map[string]string) {
