@@ -7,7 +7,10 @@ publishes them via an HTTP endpoint in Prometheus format.
 
 It provides the following Prometheus metrics:
 
-- Summary Metric: `jenkins_exporter_job_duration_seconds`
+- Histogram:
+  `jenkins_exporter_job_duration_seconds_bucket`,  
+  `jenkins_exporter_job_duration_seconds_sum`,  
+  `jenkins_exporter_job_duration_seconds_count`  
   - Labels:
     - result
     - jenkins_job: the name of the Jenkins Job
@@ -17,7 +20,8 @@ It provides the following Prometheus metrics:
       - building_duration
       - executing_time
       - waiting_time
-- Counter Metric: `jenkins_exporter_errors`  
+- Counter:
+  `jenkins_exporter_errors`  
   Counts the number of errors the jenkins-exporter encountered when fetching
   informations from the Jenkins API.
   - type:
