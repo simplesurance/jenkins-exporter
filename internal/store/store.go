@@ -6,21 +6,30 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"time"
 )
 
-type Store map[string]int64
+type Store map[string]entry
+
+type entry struct {
+	Value     int64
+	UpdatedAt time.Time
+}
 
 func New() *Store {
 	return &Store{}
 }
 
 func (s *Store) Set(key string, val int64) {
-	(*s)[key] = val
+	(*s)[key] = entry{
+		Value:     val,
+		UpdatedAt: time.Now(),
+	}
 }
 
 func (s *Store) Get(key string) (int64, bool) {
 	val, exist := (*s)[key]
-	return val, exist
+	return val.Value, exist
 }
 
 func (s *Store) ToFile(path string) error {
@@ -56,4 +65,18 @@ func FromFile(path string) (*Store, error) {
 	}
 
 	return &store, nil
+}
+
+func (s *Store) RemoveOldEntries(age time.Duration) int {
+	now := time.Now()
+	var cnt int
+
+	for k, v := range *s {
+		if now.Sub(v.UpdatedAt) > age {
+			delete(*s, k)
+			cnt++
+		}
+	}
+
+	return cnt
 }
