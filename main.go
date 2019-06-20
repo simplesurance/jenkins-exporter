@@ -243,14 +243,14 @@ func loadOrCreateStateStore() *store.Store {
 	stateStore, err := store.FromFile(*stateFilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.Printf("state file '%s' does not exist", *stateFilePath)
+			logger.Printf("state file '%s' does not exist", *stateFilePath)
 			return store.New()
 		}
 
-		log.Fatalf("loading state file failed: %s", err)
+		logger.Fatalf("loading state file failed: %s", err)
 	}
 
-	log.Printf("state loaded from '%s'", *stateFilePath)
+	logger.Printf("state loaded from '%s'", *stateFilePath)
 
 	return stateStore
 }
@@ -354,7 +354,7 @@ func main() {
 	for {
 		err := fetchAndRecord(clt, stateStore, collector)
 		if err != nil {
-			log.Printf("fetching and recording builds metrics failed: %s", err)
+			logger.Printf("fetching and recording builds metrics failed: %s", err)
 			collector.CounterAdd("errors", 1, "jenkins api fetch errors", map[string]string{"type": "jenkins_api"})
 		}
 
