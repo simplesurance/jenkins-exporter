@@ -27,6 +27,8 @@ const (
 	version = "0.3"
 )
 
+const stateStoreCleanupInterval = time.Duration(10 * 60 * time.Second)
+
 const (
 	blockedTimeMetricDescr  = "Time spent in the queue being blocked"
 	buildAbleMetricDesc     = "Time spent in the queue while buildable"
@@ -42,6 +44,8 @@ var (
 	listenAddr = flag.String("listen-addr", ":8123", "Listening address of the metric HTTP server")
 
 	stateFilePath = flag.String("state-file", appName+".state.json", "path to the state file")
+	maxStateAge   = flag.Duration("max-state-entry-age", time.Duration(14*24*60*60*time.Second),
+		"time after a state entry for a job is deleted if it was not updated")
 
 	httpTimeout = flag.Uint64("http-timeout", 180, "Timeout for jenkins http requests (seconds)")
 
@@ -171,10 +175,6 @@ func jobIsWhitelisted(build *jenkins.Build) bool {
 }
 
 func fetchAndRecord(clt *jenkins.Client, store *store.Store, collector *prometheus.Collector) error {
-	// TODO: remove records of jobs that do not exist anymore(?)
-	// otherwise they will be carried arround in the state file
-	// forever
-
 	var recordCnt int
 	fetchStart := time.Now()
 
@@ -285,6 +285,7 @@ func logConfiguration() {
 	str += fmt.Sprintf(fmtSpec, "Jenkins Job Whitelist", jenkinsJobWhitelist.String())
 	str += fmt.Sprintf(fmtSpec, "Listen Address", *listenAddr)
 	str += fmt.Sprintf(fmtSpec, "State File", *stateFilePath)
+	str += fmt.Sprintf(fmtSpec, "Max State Entry Age", maxStateAge.String())
 	str += fmt.Sprintf(fmtSpec, "Poll Interval (sec)", *pollIntervalSec)
 	str += fmt.Sprintf(fmtSpec, "HTTP Timeout (sec)", *httpTimeout)
 	str += fmt.Sprintf(fmtSpec, "Prometheus Namespace", *prometheusNamespace)
@@ -345,7 +346,9 @@ func main() {
 		WithLogger(debugLogger).
 		WithTimeout(timeout)
 
-	// create the counter with a 0  counter
+	nextStateStoreCleanup := time.Now()
+
+	// create the counter with a 0 count
 	collector.CounterAdd("errors", 0, "jenkins api fetch errors", map[string]string{"type": "jenkins_api"})
 
 	for {
@@ -353,6 +356,12 @@ func main() {
 		if err != nil {
 			log.Printf("fetching and recording builds metrics failed: %s", err)
 			collector.CounterAdd("errors", 1, "jenkins api fetch errors", map[string]string{"type": "jenkins_api"})
+		}
+
+		if nextStateStoreCleanup.Before(time.Now()) {
+			cnt := stateStore.RemoveOldEntries(*maxStateAge)
+			nextStateStoreCleanup = time.Now().Add(stateStoreCleanupInterval)
+			logger.Printf("removed %d expired entries from the state store, next cleanup in %s", cnt, stateStoreCleanupInterval)
 		}
 
 		logger.Printf("fetching and recording the next build metrics in %s", pollInterval)
