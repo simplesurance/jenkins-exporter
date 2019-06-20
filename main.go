@@ -27,7 +27,7 @@ const (
 	version = "0.3"
 )
 
-const stateStoreCleanupInterval = time.Duration(10 * 60 * time.Second)
+const stateStoreCleanupInterval = 10 * 60 * time.Second
 
 const (
 	blockedTimeMetricDescr  = "Time spent in the queue being blocked"
@@ -44,16 +44,16 @@ var (
 	listenAddr = flag.String("listen-addr", ":8123", "Listening address of the metric HTTP server")
 
 	stateFilePath = flag.String("state-file", appName+".state.json", "path to the state file")
-	maxStateAge   = flag.Duration("max-state-entry-age", time.Duration(14*24*60*60*time.Second),
+	maxStateAge   = flag.Duration("max-state-entry-age", 14*24*60*60*time.Second,
 		"time after a state entry for a job is deleted if it was not updated")
 
-	httpTimeout = flag.Uint64("http-timeout", 180, "Timeout for jenkins http requests (seconds)")
+	httpTimeout = flag.Duration("http-timeout", 180*time.Second, "Timeout for jenkins http requests")
 
 	jenkinsUsername     = flag.String("jenkins-user", "", "Jenkins API username")
 	jenkinsPassword     = flag.String("jenkins-password", "", "Jenkins API password or token")
 	jenkinsURL          = flag.String("jenkins-url", "", "URL to the Jenkins Server")
 	jenkinsJobWhitelist = cli.StrMapFlag{}
-	pollIntervalSec     = flag.Uint64("poll-interval", 30, "Interval in which data is fetched from jenkins (seconds)")
+	pollInterval        = flag.Duration("poll-interval", 30*time.Second, "Interval in which data is fetched from jenkins")
 
 	prometheusNamespace = flag.String("prometheus-namespace", strings.ReplaceAll(appName, "-", "_"), "metric name prefix")
 
@@ -146,7 +146,6 @@ func buildsByJob(builds []*jenkins.Build) map[string][]*jenkins.Build {
 
 func sortDescByID(in map[string][]*jenkins.Build) {
 	for _, builds := range in {
-
 		sort.Slice(builds, func(i, j int) bool {
 			return builds[i].ID > builds[j].ID
 		})
@@ -286,8 +285,8 @@ func logConfiguration() {
 	str += fmt.Sprintf(fmtSpec, "Listen Address", *listenAddr)
 	str += fmt.Sprintf(fmtSpec, "State File", *stateFilePath)
 	str += fmt.Sprintf(fmtSpec, "Max State Entry Age", maxStateAge.String())
-	str += fmt.Sprintf(fmtSpec, "Poll Interval (sec)", *pollIntervalSec)
-	str += fmt.Sprintf(fmtSpec, "HTTP Timeout (sec)", *httpTimeout)
+	str += fmt.Sprintf(fmtSpec, "Poll Interval", pollInterval.String())
+	str += fmt.Sprintf(fmtSpec, "HTTP Timeout (sec)", httpTimeout.String())
 	str += fmt.Sprintf(fmtSpec, "Prometheus Namespace", *prometheusNamespace)
 	str += fmt.Sprintf(fmtSpec, "Histogram Buckets", histogramBuckets.String())
 	str += fmt.Sprintf(fmtSpec, "Record blocked_time", *recordBlockedTime)
@@ -324,9 +323,6 @@ func main() {
 
 	logConfiguration()
 
-	pollInterval := time.Duration(*pollIntervalSec) * time.Second
-	timeout := time.Duration(*httpTimeout) * time.Second
-
 	http.Handle("/", promhttp.Handler())
 	go func() {
 		logger.Printf("prometheus http server listening on %s", *listenAddr)
@@ -344,7 +340,7 @@ func main() {
 	clt := jenkins.NewClient(*jenkinsURL).
 		WithAuth(*jenkinsUsername, *jenkinsPassword).
 		WithLogger(debugLogger).
-		WithTimeout(timeout)
+		WithTimeout(*httpTimeout)
 
 	nextStateStoreCleanup := time.Now()
 
@@ -364,7 +360,7 @@ func main() {
 			logger.Printf("removed %d expired entries from the state store, next cleanup in %s", cnt, stateStoreCleanupInterval)
 		}
 
-		logger.Printf("fetching and recording the next build metrics in %s", pollInterval)
-		time.Sleep(pollInterval)
+		logger.Printf("fetching and recording the next build metrics in %s", *pollInterval)
+		time.Sleep(*pollInterval)
 	}
 }
