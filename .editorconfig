@@ -15,6 +15,7 @@ max_line_length = 80
   indent_size = 2
   indent_style = space
   max_line_length = 80
+  trim_trailing_whitespace = false
 
 [Makefile]
   indent_size = 8
