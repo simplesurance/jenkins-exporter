@@ -68,7 +68,7 @@ func (c *Collector) Summary(key string, val float64, help string, labels map[str
 	s.With(labels).Observe(val)
 }
 
-func (c *Collector) Histogram(key string, val float64, buckets []float64, labels map[string]string) {
+func (c *Collector) Histogram(key string, val float64, help string, buckets []float64, labels map[string]string) {
 	h, exist := c.histograms[key]
 	if !exist {
 		h = prometheus.NewHistogramVec(
@@ -77,6 +77,7 @@ func (c *Collector) Histogram(key string, val float64, buckets []float64, labels
 				Name:        sanitize(key),
 				ConstLabels: c.constLabels,
 				Buckets:     buckets,
+				Help:        help,
 			},
 			labelNames(labels),
 		)

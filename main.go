@@ -24,7 +24,7 @@ import (
 
 const (
 	appName = "jenkins-exporter"
-	version = "0.2"
+	version = "0.3"
 )
 
 const (
@@ -58,20 +58,31 @@ var (
 	recordBuildingDuration = flag.Bool("enable-building-duration-metric", true, "record the building_duration metric\n"+buildDurationMetricDesc)
 	recordExecutionTime    = flag.Bool("enable-execution-time-metric", false, "record the execution_time metric"+executionTimeMetricDesc) // no '\n' because executionTimeMetricDesc is an empty strinng
 	recordWaitingTime      = flag.Bool("enable-waiting-time-metric", false, "record the waiting_time metric\n"+waitingTimeMetricDesc)
-	printVersion           = flag.Bool("version", false, "print the version and exit")
-	debug                  = flag.Bool("debug", false, "enable debug mode")
+	histogramBuckets       = cli.Float64Slice{
+		1 * 60,
+		5 * 60,
+		10 * 60,
+		15 * 60,
+		30 * 60,
+		45 * 60,
+		60 * 60,
+		120 * 60,
+		480 * 60,
+	}
+
+	printVersion = flag.Bool("version", false, "print the version and exit")
+	debug        = flag.Bool("debug", false, "enable debug mode")
 )
 
 func init() {
 	flag.Var(&jenkinsJobWhitelist, "jenkins-job-whitelist", "Comma-separated list of jenkins job names for that metrics are recorded.\nIf empty metrics for all jobs are recorded.\nMultibranch jobs are identified by their multibranch jobname")
+	flag.Var(&histogramBuckets, "histogram-buckets", "Comma-separated list of histogram buckets that are used for the metrics.\nValues are specified in seconds.")
 }
 
 func recordMetric(c *prometheus.Collector, jobName, metricType, buildResult, help string, duration time.Duration) {
 	const key = "job_duration_seconds"
 
-	c.Summary(key,
-		float64(duration/time.Second),
-		help,
+	c.Histogram(key, float64(duration/time.Second), help, histogramBuckets,
 		map[string]string{
 			// The label "job" is already used by Prometheus and
 			// applied to all scrape targets.
@@ -277,6 +288,7 @@ func logConfiguration() {
 	str += fmt.Sprintf(fmtSpec, "Poll Interval (sec)", *pollIntervalSec)
 	str += fmt.Sprintf(fmtSpec, "HTTP Timeout (sec)", *httpTimeout)
 	str += fmt.Sprintf(fmtSpec, "Prometheus Namespace", *prometheusNamespace)
+	str += fmt.Sprintf(fmtSpec, "Histogram Buckets", histogramBuckets.String())
 	str += fmt.Sprintf(fmtSpec, "Record blocked_time", *recordBlockedTime)
 	str += fmt.Sprintf(fmtSpec, "Record buildable_time", *recordBuildAbleTime)
 	str += fmt.Sprintf(fmtSpec, "Record building_duration", *recordBuildingDuration)
