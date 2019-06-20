@@ -25,6 +25,8 @@ func (s *StrMapFlag) String() string {
 }
 
 func (s *StrMapFlag) Set(v string) error {
+	*s = StrMapFlag{}
+
 	for _, elem := range strings.Split(v, ",") {
 		(*s)[strings.TrimSpace(elem)] = struct{}{}
 	}
