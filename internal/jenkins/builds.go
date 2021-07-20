@@ -7,8 +7,6 @@ import (
 	"time"
 )
 
-//TODO: move to internal/
-
 // https://github.com/jenkinsci/metrics-plugin/blob/master/src/main/java/jenkins/metrics/impl/TimeInQueueAction.java#L85
 type actionRawResp struct {
 	Class                  string `json:"_class"`
