@@ -253,7 +253,7 @@ func loadOrCreateStateStore() *store.Store {
 }
 
 func registerSigHandler(s *store.Store) {
-	sigChan := make(chan os.Signal)
+	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
 
 	go func() {
