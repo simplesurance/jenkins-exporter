@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed" // is used to initialize the version variable with content from the ver file
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -24,8 +25,10 @@ import (
 
 const (
 	appName = "jenkins-exporter"
-	version = "0.3"
 )
+
+//go:embed ver
+var version string
 
 const stateStoreCleanupInterval = 10 * 60 * time.Second
 
@@ -309,7 +312,7 @@ func main() {
 	flag.Parse()
 
 	if *printVersion {
-		fmt.Printf("%s\n", version)
+		fmt.Printf("%s\n", strings.TrimSpace(version))
 		os.Exit(0)
 	}
 
