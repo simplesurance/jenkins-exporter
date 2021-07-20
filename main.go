@@ -174,7 +174,6 @@ func jobIsWhitelisted(build *jenkins.Build) bool {
 }
 
 func fetchAndRecord(clt *jenkins.Client, store *store.Store, collector *prometheus.Collector) error {
-	var recordCnt int
 	fetchStart := time.Now()
 
 	builds, err := clt.Builds(false)
@@ -226,7 +225,6 @@ func fetchAndRecord(clt *jenkins.Client, store *store.Store, collector *promethe
 			}
 
 			recordBuildMetric(collector, b)
-			recordCnt++
 		}
 		if builds[0].ID > highestID {
 			logger.Printf("%s: recorded metrics for %d build(s), new highest build ID: %d", job, builds[0].ID-highestID, builds[0].ID)
