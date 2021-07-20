@@ -215,7 +215,7 @@ func fetchAndRecord(clt *jenkins.Client, store *store.Store, collector *promethe
 			continue
 		}
 		if highestID > builds[0].ID {
-			debugLogger.Printf("%s: highest job ID on jenkins server is higher then the stored one, resetting ID to: %d", job, builds[0].ID)
+			debugLogger.Printf("%s: highest stored job ID is bigger then the one known by jenkins, resetting ID to: %d", job, builds[0].ID)
 			store.Set(job, builds[0].ID)
 		}
 
