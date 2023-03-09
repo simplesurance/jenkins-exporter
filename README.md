@@ -42,15 +42,15 @@ See `./jenkins-exporter -help` for more information.
 
 Download a release binary from: <https://github.com/simplesurance/jenkins-exporter/releases>.
 
-#### go get ####
+#### go install ####
 
-```
-go get -u github.com/simplesurance/jenkins-exporter
+```sh
+go install github.com/simplesurance/jenkins-exporter@latest
 ```
 
 #### git clone #####
 
-```
+```sh
 git clone --depth 1 https://github.com/simplesurance/jenkins-exporter.git jenkins-exporter
 cd jenkins-exporter
 make
