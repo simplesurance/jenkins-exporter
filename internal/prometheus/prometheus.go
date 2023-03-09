@@ -47,27 +47,6 @@ func (c *Collector) CounterAdd(key string, cnt float64, help string, labels map[
 	s.With(labels).Add(cnt)
 }
 
-func (c *Collector) Summary(key string, val float64, help string, labels map[string]string) {
-	s, exist := c.summaries[key]
-	if !exist {
-		s = prometheus.NewSummaryVec(
-			prometheus.SummaryOpts{
-				Namespace:   c.namespace,
-				Name:        sanitize(key),
-				ConstLabels: c.constLabels,
-				Help:        help,
-			},
-			labelNames(labels),
-		)
-
-		prometheus.MustRegister(s)
-
-		c.summaries[key] = s
-	}
-
-	s.With(labels).Observe(val)
-}
-
 func (c *Collector) Histogram(key string, val float64, help string, buckets []float64, labels map[string]string) {
 	h, exist := c.histograms[key]
 	if !exist {
