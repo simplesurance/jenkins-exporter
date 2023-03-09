@@ -3,7 +3,6 @@ package store
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -49,11 +48,11 @@ func (s *Store) ToFile(path string) error {
 		return err
 	}
 
-	return ioutil.WriteFile(absPath, data, 0644)
+	return os.WriteFile(absPath, data, 0644)
 }
 
 func FromFile(path string) (*Store, error) {
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
