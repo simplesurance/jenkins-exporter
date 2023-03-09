@@ -3,7 +3,7 @@ package jenkins
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"time"
@@ -11,7 +11,7 @@ import (
 
 const APISuffix = "api/json"
 
-var defaultLogger = log.New(ioutil.Discard, "", 0)
+var defaultLogger = log.New(io.Discard, "", 0)
 
 type auth struct {
 	username string
@@ -83,11 +83,11 @@ func (c *Client) do(method, url string, result interface{}) error {
 
 	if resp.StatusCode != http.StatusOK {
 		//  body has always be read until EOF and closed
-		_, _ = ioutil.ReadAll(resp.Body)
+		_, _ = io.ReadAll(resp.Body)
 		return &ErrHTTPRequestFailed{Code: resp.StatusCode}
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}

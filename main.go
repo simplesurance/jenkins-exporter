@@ -4,7 +4,7 @@ import (
 	_ "embed" // is used to initialize the version variable with content from the ver file
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -41,7 +41,7 @@ const (
 )
 
 var logger = log.New(os.Stderr, "", 0)
-var debugLogger = log.New(ioutil.Discard, "", 0)
+var debugLogger = log.New(io.Discard, "", 0)
 
 var (
 	listenAddr = flag.String("listen-addr", ":8123", "Listening address of the metric HTTP server")
