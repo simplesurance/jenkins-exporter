@@ -190,7 +190,7 @@ func recordBuildStageJobInAllowList(b *jenkins.Build) bool {
 	return exists
 }
 
-func fetchAndRecord(clt *jenkins.Client, store *store.Store, collector *prometheus.Collector) error {
+func fetchAndRecord(clt *jenkins.Client, store *store.Store, onlyRecordNewbuilds bool, collector *prometheus.Collector) error {
 	fetchStart := time.Now()
 
 	builds, err := clt.Builds(false)
@@ -205,8 +205,6 @@ func fetchAndRecord(clt *jenkins.Client, store *store.Store, collector *promethe
 
 	for job, builds := range buildMap {
 		if len(builds) == 0 {
-			// should we record a highest buildID of -1 instead,
-			// so that the 0 builds will be recorded when it ran?
 			continue
 		}
 
@@ -223,16 +221,18 @@ func fetchAndRecord(clt *jenkins.Client, store *store.Store, collector *promethe
 		}
 
 		highestID, exist := store.Get(job)
-		if !exist {
-			// if we do not have a record for a job,
-			// only store the highest ID and skip it.
+		if !exist && onlyRecordNewbuilds {
+			// If a new state file was created and we do not have
+			// a record for the build, do not record metrics for
+			// builds that already existed in the first iteration.
 			// On a subsequent runs new builds will be recorded.
 			// This prevents that we record multiple times the
-			// same builds if no state store file exist of the
-			// previous run.
+			// same builds if the state store file of the the
+			// previous execution was deleted but metrics for jobs
+			// were recorded in Prometheus.
 
 			store.Set(job, builds[0].ID)
-			debugLogger.Printf("%s: seen the first time, skipping existing builds, highest build ID: %d", job, builds[0].ID)
+			debugLogger.Printf("%s: seen the first time and state file did not exist, skipping existing builds, highest build ID: %d", job, builds[0].ID)
 			continue
 		}
 		if highestID > builds[0].ID {
@@ -303,12 +303,12 @@ func recordStagesMetric(c *prometheus.Collector, b *jenkins.Build, stages []*jen
 	}
 }
 
-func loadOrCreateStateStore() *store.Store {
+func loadOrCreateStateStore() (isNewStore bool, _ *store.Store) {
 	stateStore, err := store.FromFile(*stateFilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			logger.Printf("state file '%s' does not exist", *stateFilePath)
-			return store.New()
+			return true, store.New()
 		}
 
 		logger.Fatalf("loading state file failed: %s", err)
@@ -316,7 +316,7 @@ func loadOrCreateStateStore() *store.Store {
 
 	logger.Printf("state loaded from '%s'", *stateFilePath)
 
-	return stateStore
+	return false, stateStore
 }
 
 func registerSigHandler(s *store.Store) {
@@ -401,7 +401,7 @@ func main() {
 
 	}()
 
-	stateStore := loadOrCreateStateStore()
+	isNewStore, stateStore := loadOrCreateStateStore()
 	registerSigHandler(stateStore)
 
 	collector := prometheus.NewCollector(*prometheusNamespace, nil)
@@ -417,7 +417,7 @@ func main() {
 	collector.CounterAdd("errors", 0, "jenkins api fetch errors", map[string]string{"type": "jenkins_wfapi"})
 
 	for {
-		err := fetchAndRecord(clt, stateStore, collector)
+		err := fetchAndRecord(clt, stateStore, isNewStore, collector)
 		if err != nil {
 			logger.Printf("fetching and recording builds metrics failed: %s", err)
 			collector.CounterAdd("errors", 1, "jenkins api fetch errors", map[string]string{"type": "jenkins_api"})
