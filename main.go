@@ -55,11 +55,12 @@ var (
 
 	httpTimeout = flag.Duration("http-timeout", 180*time.Second, "Timeout for jenkins http requests")
 
-	jenkinsUsername     = flag.String("jenkins-user", "", "Jenkins API username")
-	jenkinsPassword     = flag.String("jenkins-password", "", "Jenkins API password or token")
-	jenkinsURL          = flag.String("jenkins-url", "", "URL to the Jenkins Server")
-	jenkinsJobWhitelist = cli.StrMapFlag{}
-	pollInterval        = flag.Duration("poll-interval", 30*time.Second, "Interval in which data is fetched from jenkins")
+	jenkinsUsername      = flag.String("jenkins-user", "", "Jenkins API username")
+	jenkinsPassword      = flag.String("jenkins-password", "", "Jenkins API password or token")
+	jenkinsURL           = flag.String("jenkins-url", "", "URL to the Jenkins Server")
+	jenkinsJobWhitelist  = cli.StrMapFlag{}
+	pollInterval         = flag.Duration("poll-interval", 30*time.Second, "Interval in which data is fetched from jenkins")
+	httpRequestRateEvery = flag.Duration("http-request-limit", 500*time.Millisecond, "Limit the number of http-requests sent to jenkins to 1 per http-request-limit interval")
 
 	prometheusNamespace = flag.String("prometheus-namespace", strings.ReplaceAll(appName, "-", "_"), "metric name prefix")
 
@@ -351,6 +352,7 @@ func logConfiguration() {
 	str += fmt.Sprintf(fmtSpec, "State File", *stateFilePath)
 	str += fmt.Sprintf(fmtSpec, "Max State Entry Age", maxStateAge.String())
 	str += fmt.Sprintf(fmtSpec, "Poll Interval", pollInterval.String())
+	str += fmt.Sprintf(fmtSpec, "HTTP Request Limit, 1 per", httpRequestRateEvery.String())
 	str += fmt.Sprintf(fmtSpec, "HTTP Timeout (sec)", httpTimeout.String())
 	str += fmt.Sprintf(fmtSpec, "Prometheus Namespace", *prometheusNamespace)
 	str += fmt.Sprintf(fmtSpec, "Histogram Buckets", histogramBuckets.String())
@@ -409,7 +411,8 @@ func main() {
 		WithAuth(*jenkinsUsername, *jenkinsPassword).
 		WithLogger(debugLogger).
 		WithTimeout(*httpTimeout).
-		WithMetrics(collector)
+		WithMetrics(collector).
+		WithRatelimit(*httpRequestRateEvery)
 
 	nextStateStoreCleanup := time.Now()
 

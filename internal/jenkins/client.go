@@ -1,12 +1,15 @@
 package jenkins
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"time"
+
+	"golang.org/x/time/rate"
 
 	"github.com/simplesurance/jenkins-exporter/internal/prometheus"
 )
@@ -26,6 +29,7 @@ type Client struct {
 	serverURL     string
 	logger        *log.Logger
 	promCollector *prometheus.Collector
+	limiter       *rate.Limiter
 }
 
 func (c *Client) WithAuth(username, password string) *Client {
@@ -52,6 +56,14 @@ func (c *Client) WithMetrics(collector *prometheus.Collector) *Client {
 	return c
 }
 
+// WithRatelimit limits the number of http-request that are sent out per
+// interval. An interval of 0 means unlimited.
+func (c *Client) WithRatelimit(interval time.Duration) *Client {
+	c.limiter = rate.NewLimiter(rate.Every(interval), 1)
+
+	return c
+}
+
 func NewClient(url string) *Client {
 	if len(url) > 0 && url[len(url)-1] != '/' {
 		url += "/"
@@ -61,6 +73,7 @@ func NewClient(url string) *Client {
 		client:    http.Client{},
 		serverURL: url,
 		logger:    defaultLogger,
+		limiter:   rate.NewLimiter(rate.Inf, 0),
 	}
 }
 
@@ -73,6 +86,10 @@ func (e *ErrHTTPRequestFailed) Error() string {
 }
 
 func (c *Client) do(method, url string, result interface{}) error {
+	if err := c.limiter.Wait(context.Background()); err != nil {
+		return err
+	}
+
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
 		return err
