@@ -1,6 +1,9 @@
 export GO111MODULE=on
 export GOFLAGS=-mod=vendor
 
+VERSION := $(shell git describe --tags --exact 2&>/dev/null || git describe  --abbrev --always --dirty)
+LDFLAGS := "-X main.Version=$(VERSION) -extldflags -static"
+
 BIN = jenkins-exporter
 RELEASE_BIN = release/$(BIN)-linux_amd64
 SRC = main.go
@@ -8,13 +11,13 @@ SRC = main.go
 .PHONY: all
 all:
 	$(info * compiling $@)
-	@CGO_ENABLED=0 go build -ldflags '-extldflags "-static"' -o jenkins-exporter $(SRC)
+	@CGO_ENABLED=0 go build -ldflags $(LDFLAGS) -o jenkins-exporter $(SRC)
 
 
 .PHONY: release_bin
 release_bin:
 	$(info * compiling $(RELEASE_BIN))
-	@CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags '-extldflags "-static"' -o $(RELEASE_BIN) $(SRC)
+	@CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags $(LDFLAGS) -o $(RELEASE_BIN) $(SRC)
 
 default: bla/$(BIN)
 

@@ -27,8 +27,8 @@ const (
 	appName = "jenkins-exporter"
 )
 
-//go:embed ver
-var version string
+// Version is set during compiliation via -ldflags.
+var Version string = "unknown"
 
 const stateStoreCleanupInterval = 10 * 60 * time.Second
 
@@ -381,7 +381,7 @@ func main() {
 	flag.Parse()
 
 	if *printVersion {
-		fmt.Printf("%s\n", strings.TrimSpace(version))
+		fmt.Printf("%s\n", strings.TrimSpace(Version))
 		os.Exit(0)
 	}
 
