@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/simplesurance/jenkins-exporter/internal/prometheus"
 )
 
 const APISuffix = "api/json"
@@ -19,10 +21,11 @@ type auth struct {
 }
 
 type Client struct {
-	client    http.Client
-	auth      *auth
-	serverURL string
-	logger    *log.Logger
+	client        http.Client
+	auth          *auth
+	serverURL     string
+	logger        *log.Logger
+	promCollector *prometheus.Collector
 }
 
 func (c *Client) WithAuth(username, password string) *Client {
@@ -39,6 +42,12 @@ func (c *Client) WithTimeout(timeout time.Duration) *Client {
 
 func (c *Client) WithLogger(l *log.Logger) *Client {
 	c.logger = l
+
+	return c
+}
+
+func (c *Client) WithMetrics(collector *prometheus.Collector) *Client {
+	c.promCollector = collector
 
 	return c
 }
@@ -77,6 +86,9 @@ func (c *Client) do(method, url string, result interface{}) error {
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return err
+	}
+	if c.promCollector != nil {
+		c.promCollector.CounterAdd("http_requests_total", 1, "number of http requests sent", nil)
 	}
 
 	defer resp.Body.Close()

@@ -29,12 +29,15 @@ It provides the following Prometheus metrics:
       - type:
         - duration
 - Counter:
-  `jenkins_exporter_errors`  
-  Counts the number of errors the jenkins-exporter encountered when fetching
-  informations from the Jenkins API.
-  - type:
-    - jenkins_api
-    - jenkins_wfapi
+  - `jenkins_exporter_errors`  
+    Counts the number of errors the jenkins-exporter encountered when fetching
+    informations from the Jenkins API.
+    - Labels:
+      - type:
+        - jenkins_api
+        - jenkins_wfapi
+  - `jenkins_http_requests_total`  
+    Counts the number of http-requests sent successfully to Jenkins.
 
 By default job metrics are recorded for every finished Jenkins build. The
 Jenkins jobs for that builds are recorded can be limited with the

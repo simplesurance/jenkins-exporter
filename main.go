@@ -408,7 +408,8 @@ func main() {
 	clt := jenkins.NewClient(*jenkinsURL).
 		WithAuth(*jenkinsUsername, *jenkinsPassword).
 		WithLogger(debugLogger).
-		WithTimeout(*httpTimeout)
+		WithTimeout(*httpTimeout).
+		WithMetrics(collector)
 
 	nextStateStoreCleanup := time.Now()
 
