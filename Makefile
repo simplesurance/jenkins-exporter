@@ -1,7 +1,7 @@
 export GO111MODULE=on
 export GOFLAGS=-mod=vendor
 
-VERSION := $(shell git describe --tags --exact 2&>/dev/null || git describe  --abbrev --always --dirty)
+VERSION := $(shell git describe --tags --dirty --exact 2>/dev/null || git describe  --abbrev --always --dirty)
 LDFLAGS := "-X main.Version=$(VERSION) -extldflags -static"
 
 BIN = jenkins-exporter
