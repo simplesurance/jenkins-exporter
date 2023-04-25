@@ -14,6 +14,7 @@ It provides the following Prometheus metrics:
     - Labels:
       - result
       - jenkins_job: the name of the Jenkins Job
+      - branch: for multibranch Jenkins Jobs, the branch name
     - type: type of recorded duration, one of:
       - blocked_time
       - buildable_time
@@ -28,6 +29,7 @@ It provides the following Prometheus metrics:
       - stage: stage name
       - type:
         - duration
+      - branch: for multibranch Jenkins Jobs, the branch name
 - Counter:
   - `jenkins_exporter_errors`  
     Counts the number of errors the jenkins-exporter encountered when fetching
