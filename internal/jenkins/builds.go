@@ -34,7 +34,7 @@ type respRaw struct {
 
 type Build struct {
 	JobName            string
-	MultibranchJobName string
+	MultiBranchJobName string
 	ID                 int64
 	BuildableTime      time.Duration
 	WaitingTime        time.Duration
@@ -58,7 +58,7 @@ func (c *Client) buildRawToBuild(workflowJobName, multibranchJobName string, raw
 		}
 		b := Build{
 			JobName:            workflowJobName,
-			MultibranchJobName: multibranchJobName,
+			MultiBranchJobName: multibranchJobName,
 			ID:                 int64(intID),
 			BuildableTime:      time.Duration(a.BuildableTimeMillis) * time.Millisecond,
 			WaitingTime:        time.Duration(a.WaitingTimeMillis) * time.Millisecond,

@@ -84,6 +84,7 @@ var (
 	recordBuildStageMetric        = flag.Bool("enable-build-stage-metric", false, "record the duration per build stages as a histogram metric called "+buildStageMetricKey)
 	ignoreUnsuccessfulBuildStages = flag.Bool("build-stage-ignore-unsuccessful", true, "Ignore build stages that were unsuccessful.")
 	recordBuildStageJobAllowList  = cli.BuildStageMapFlag{}
+	branchLabelAllowList          = cli.MapStrMapStrFlag{}
 
 	printVersion = flag.Bool("version", false, "print the version and exit")
 	debug        = flag.Bool("debug", false, "enable debug mode")
@@ -93,49 +94,63 @@ func init() {
 	flag.Var(&jenkinsJobWhitelist, "jenkins-job-whitelist", "Comma-separated list of jenkins job names for that metrics are recorded.\nIf empty metrics for all jobs are recorded.\nMultibranch jobs are identified by their multibranch jobname.")
 	flag.Var(&histogramBuckets, "histogram-buckets", "Comma-separated list of histogram buckets that are used for the metrics.\nValues are specified in seconds.")
 	flag.Var(&recordBuildStageJobAllowList, "build-stage-allowlist", "Format: 'JOB-NAME[:STAGE-NAME][,JOB-NAME[:STAGE-NAME]]...'\nSpecifies jobs and stages for which per-stage metrics are recorded.\nIf empty, durations for all stages of all jobs are recorded.\nIf '[:STAGE_NAME]' is omitted, durations for all stages of the job are recorded.")
+	flag.Var(
+		&branchLabelAllowList,
+		"branch-label-allowlist",
+		"Format: 'JOB-NAME:BRANCH-NAME[,BRANCH-NAME...][;JOB-NAME:BRANCH-NAME[,BRANCH-NAME...]'\n"+
+			"Specifies multibranch job and branch names for which a branch label is recorded.")
 }
 
-func recordJobDurationMetric(c *prometheus.Collector, jobName, metricType, buildResult, help string, duration time.Duration) {
+func recordJobDurationMetric(c *prometheus.Collector, jobName, branchLabel, metricType, buildResult, help string, duration time.Duration) {
 	const key = "job_duration_seconds"
-	c.Histogram(key, float64(duration/time.Second), help, histogramBuckets, map[string]string{
+	labels := map[string]string{
 		// The label "job" is already used by Prometheus and
 		// applied to all scrape targets.
 		"jenkins_job": jobName,
 		"type":        metricType,
 		"result":      strings.ToLower(buildResult),
-	})
+		"branch":      branchLabel,
+	}
+
+	c.Histogram(key, float64(duration/time.Second), help, histogramBuckets, labels)
 }
 
 // metricJobName returns the value of the job label used in metrics.
 // If multibranchJobName is not empty, it is used as label value, otherwise
 // jobName.
 func metricJobName(b *jenkins.Build) string {
-	if b.MultibranchJobName != "" {
-		return b.MultibranchJobName
+	if b.MultiBranchJobName != "" {
+		return b.MultiBranchJobName
 	}
 	return b.JobName
 }
 
 func recordBuildMetric(c *prometheus.Collector, b *jenkins.Build) {
+	var branchLabel string
+
 	jobName := metricJobName(b)
+
+	if isRecordingBranchLabelEnabled(b) {
+		branchLabel = b.JobName
+	}
 
 	// TODO: sanitize jobname?, sometimes contains %20 and other weird
 	// chars
 
 	if *recordBlockedTime {
-		recordJobDurationMetric(c, jobName, "blocked_time", b.Result, blockedTimeMetricDescr, b.BlockedTime)
+		recordJobDurationMetric(c, jobName, branchLabel, "blocked_time", b.Result, blockedTimeMetricDescr, b.BlockedTime)
 	}
 	if *recordBuildAbleTime {
-		recordJobDurationMetric(c, jobName, "buildable_time", b.Result, buildAbleMetricDesc, b.BuildableTime)
+		recordJobDurationMetric(c, jobName, branchLabel, "buildable_time", b.Result, buildAbleMetricDesc, b.BuildableTime)
 	}
 	if *recordBuildingDuration {
-		recordJobDurationMetric(c, jobName, "building_duration", b.Result, buildDurationMetricDesc, b.BuildingDuration)
+		recordJobDurationMetric(c, jobName, branchLabel, "building_duration", b.Result, buildDurationMetricDesc, b.BuildingDuration)
 	}
 	if *recordExecutionTime {
-		recordJobDurationMetric(c, jobName, "executing_time", b.Result, executionTimeMetricDesc, b.ExecutingTime)
+		recordJobDurationMetric(c, jobName, branchLabel, "executing_time", b.Result, executionTimeMetricDesc, b.ExecutingTime)
 	}
 	if *recordWaitingTime {
-		recordJobDurationMetric(c, jobName, "waiting_time", b.Result, waitingTimeMetricDesc, b.WaitingTime)
+		recordJobDurationMetric(c, jobName, branchLabel, "waiting_time", b.Result, waitingTimeMetricDesc, b.WaitingTime)
 	}
 }
 
@@ -145,8 +160,8 @@ func buildsByJob(builds []*jenkins.Build) map[string][]*jenkins.Build {
 	for _, b := range builds {
 		var jobName string
 
-		if b.MultibranchJobName != "" {
-			jobName = b.MultibranchJobName + "/"
+		if b.MultiBranchJobName != "" {
+			jobName = b.MultiBranchJobName + "/"
 		}
 		jobName += b.JobName
 
@@ -172,8 +187,8 @@ func jobIsInAllowList(build *jenkins.Build) bool {
 	}
 
 	jobName := build.JobName
-	if build.MultibranchJobName != "" {
-		jobName = build.MultibranchJobName
+	if build.MultiBranchJobName != "" {
+		jobName = build.MultiBranchJobName
 	}
 
 	if _, exist := jenkinsJobWhitelist[jobName]; exist {
@@ -265,9 +280,9 @@ func fetchAndRecord(clt *jenkins.Client, store *store.Store, onlyRecordNewbuilds
 }
 
 func fetchAndRecordStageMetric(clt *jenkins.Client, collector *prometheus.Collector, b *jenkins.Build) {
-	stages, err := clt.Stages(b.JobName, b.MultibranchJobName, b.ID)
+	stages, err := clt.Stages(b.JobName, b.MultiBranchJobName, b.ID)
 	if err != nil {
-		logger.Printf("retrieving stage information for job: %q, multibranchJob: %q, buildID: %d, failed: %s", b.JobName, b.MultibranchJobName, b.ID, err)
+		logger.Printf("retrieving stage information for job: %q, multibranchJob: %q, buildID: %d, failed: %s", b.JobName, b.MultiBranchJobName, b.ID, err)
 		collector.CounterAdd("errors", 1, "jenkins api fetch errors", map[string]string{"type": "jenkins_wfapi"})
 		return
 	}
@@ -284,7 +299,22 @@ func stageIsInAllowList(jobName, stageName string) bool {
 	return exists
 }
 
+func isRecordingBranchLabelEnabled(b *jenkins.Build) bool {
+	if b.MultiBranchJobName == "" {
+		return false
+	}
+
+	branches := branchLabelAllowList[b.MultiBranchJobName]
+	_, found := branches[b.JobName]
+	return found
+}
+
 func recordStagesMetric(c *prometheus.Collector, b *jenkins.Build, stages []*jenkins.Stage) {
+	var branchLabel string
+	if isRecordingBranchLabelEnabled(b) {
+		branchLabel = b.JobName
+	}
+
 	metricJobName := metricJobName(b)
 	for _, stage := range stages {
 		if !stageIsInAllowList(metricJobName, stage.Name) {
@@ -295,12 +325,15 @@ func recordStagesMetric(c *prometheus.Collector, b *jenkins.Build, stages []*jen
 			continue
 		}
 
-		c.Histogram(buildStageMetricKey, float64(stage.Duration/time.Second), stageDurationMetricDesc, histogramBuckets, map[string]string{
+		labels := map[string]string{
 			"jenkins_job": metricJobName,
 			"stage":       stage.Name,
 			"type":        "duration",
 			"result":      strings.ToLower(stage.Status),
-		})
+			"branch":      branchLabel,
+		}
+
+		c.Histogram(buildStageMetricKey, float64(stage.Duration/time.Second), stageDurationMetricDesc, histogramBuckets, labels)
 	}
 }
 
@@ -364,6 +397,7 @@ func logConfiguration() {
 	str += fmt.Sprintf(fmtSpec, "Record per Stage Metrics", *recordBuildStageMetric)
 	str += fmt.Sprintf(fmtSpec, "Ignore Unsuccessful Build Stages", *ignoreUnsuccessfulBuildStages)
 	str += fmt.Sprintf(fmtSpec, "Build Stage Allowlist", recordBuildStageJobAllowList.String())
+	str += fmt.Sprintf(fmtSpec, "Branch Label Allowlist", branchLabelAllowList.String())
 
 	logger.Printf(str)
 }

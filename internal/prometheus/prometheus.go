@@ -68,6 +68,22 @@ func (c *Collector) Histogram(key string, val float64, help string, buckets []fl
 
 	h.With(labels).Observe(val)
 }
+func (c *Collector) NewHistogram(key string, help string, buckets []float64, labels map[string]string) {
+	h := prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace:   c.namespace,
+			Name:        sanitize(key),
+			ConstLabels: c.constLabels,
+			Buckets:     buckets,
+			Help:        help,
+		},
+		labelNames(labels),
+	)
+
+	prometheus.MustRegister(h)
+
+	c.histograms[key] = h
+}
 
 func labelNames(lbs prometheus.Labels) []string {
 	names := make([]string, 0, len(lbs))
