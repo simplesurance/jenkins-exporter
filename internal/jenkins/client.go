@@ -9,9 +9,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/time/rate"
-
-	"github.com/simplesurance/jenkins-exporter/internal/prometheus"
 )
 
 const APISuffix = "api/json"
@@ -24,12 +23,12 @@ type auth struct {
 }
 
 type Client struct {
-	client        http.Client
-	auth          *auth
-	serverURL     string
-	logger        *log.Logger
-	promCollector *prometheus.Collector
-	limiter       *rate.Limiter
+	client             http.Client
+	auth               *auth
+	serverURL          string
+	logger             *log.Logger
+	errorMetricCounter *prometheus.CounterVec
+	limiter            *rate.Limiter
 }
 
 func (c *Client) WithAuth(username, password string) *Client {
@@ -50,8 +49,8 @@ func (c *Client) WithLogger(l *log.Logger) *Client {
 	return c
 }
 
-func (c *Client) WithMetrics(collector *prometheus.Collector) *Client {
-	c.promCollector = collector
+func (c *Client) WithErrorMetrics(counter *prometheus.CounterVec) *Client {
+	c.errorMetricCounter = counter
 
 	return c
 }
@@ -104,8 +103,8 @@ func (c *Client) do(method, url string, result interface{}) error {
 	if err != nil {
 		return err
 	}
-	if c.promCollector != nil {
-		c.promCollector.CounterAdd("http_requests_total", 1, "number of http requests sent", nil)
+	if c.errorMetricCounter != nil {
+		c.errorMetricCounter.With(prometheus.Labels{"type": "http_requests_total"}).Inc()
 	}
 
 	defer resp.Body.Close()
