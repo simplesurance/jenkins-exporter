@@ -1,7 +1,6 @@
 package main
 
 import (
-	_ "embed" // is used to initialize the version variable with content from the ver file
 	"flag"
 	"fmt"
 	"io"
