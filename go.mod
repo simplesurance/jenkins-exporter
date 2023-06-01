@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/jamiealquiza/envy v1.1.0
-	github.com/prometheus/client_golang v1.15.0
+	github.com/prometheus/client_golang v1.15.1
 	golang.org/x/time v0.3.0
 )
 
