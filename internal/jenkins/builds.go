@@ -16,10 +16,12 @@ type actionRawResp struct {
 	ExecutingTimeMillis    int64  `json:"executingTimeMillis"`
 	BuildingDurationMillis int64  `json:"buildingDurationMillis"`
 }
+
 type buildRawResp struct {
-	ID      string           `json:"id"`
-	Actions []*actionRawResp `json:"actions"`
-	Result  string           `json:"result"`
+	ID       string           `json:"id"`
+	Actions  []*actionRawResp `json:"actions"`
+	Result   string           `json:"result"`
+	Building *bool            `json:"building"`
 }
 
 type jobRawResp struct {
@@ -42,6 +44,19 @@ type Build struct {
 	ExecutingTime      time.Duration
 	BuildingDuration   time.Duration
 	Result             string
+	Building           bool
+}
+
+func (b *buildRawResp) validate() error {
+	if b.Building == nil {
+		return errors.New("Building field is missing (nil)")
+	}
+
+	if !*b.Building && b.Result == "" {
+		return errors.New("Building is false but build result is empty")
+	}
+
+	return nil
 }
 
 func (c *Client) buildRawToBuild(workflowJobName, multibranchJobName string, rawBuild *buildRawResp) (*Build, error) {
@@ -56,6 +71,7 @@ func (c *Client) buildRawToBuild(workflowJobName, multibranchJobName string, raw
 		if err != nil {
 			return nil, fmt.Errorf("could not convert id '%s' to int64", rawBuild.ID)
 		}
+
 		b := Build{
 			JobName:            workflowJobName,
 			MultiBranchJobName: multibranchJobName,
@@ -66,6 +82,7 @@ func (c *Client) buildRawToBuild(workflowJobName, multibranchJobName string, raw
 			ExecutingTime:      time.Duration(a.ExecutingTimeMillis) * time.Millisecond,
 			BuildingDuration:   time.Duration(a.BuildingDurationMillis) * time.Millisecond,
 			Result:             rawBuild.Result,
+			Building:           *rawBuild.Building,
 		}
 
 		return &b, nil
@@ -74,22 +91,30 @@ func (c *Client) buildRawToBuild(workflowJobName, multibranchJobName string, raw
 	return nil, errors.New("could not find metrics in Actions slice")
 }
 
-func buildIsInProgress(b *buildRawResp) bool {
-	return b.Result == ""
+func buildID(job *jobRawResp, build *buildRawResp) string {
+	return fmt.Sprintf("%s/%s", job.Name, build.ID)
+}
+func multibranchBuildID(multibranchJob, job *jobRawResp, build *buildRawResp) string {
+	return fmt.Sprintf("%s/%s/%s", multibranchJob.Name, job.Name, build.ID)
 }
 
-func (c *Client) respRawToBuilds(raw *respRaw, removeInProgressBuilds bool) []*Build {
+func (c *Client) respRawToBuilds(raw *respRaw, removeBuildingBuilds bool) []*Build {
 	var res []*Build
 
 	for _, job := range raw.Jobs {
 		for _, rawBuild := range job.WorkflowJobBuilds {
-			if removeInProgressBuilds && buildIsInProgress(rawBuild) {
+			if err := rawBuild.validate(); err != nil {
+				c.logger.Printf("skipping build %s: %s", buildID(job, rawBuild), err)
+				continue
+			}
+
+			if removeBuildingBuilds && *rawBuild.Building {
 				continue
 			}
 
 			b, err := c.buildRawToBuild(job.Name, "", rawBuild)
 			if err != nil {
-				c.logger.Printf("skipping build %s/%s: %s", job.Name, rawBuild.ID, err)
+				c.logger.Printf("skipping build %s: %s", buildID(job, rawBuild), err)
 				continue
 			}
 
@@ -98,13 +123,18 @@ func (c *Client) respRawToBuilds(raw *respRaw, removeInProgressBuilds bool) []*B
 
 		for _, multibranchJob := range job.MultiBranchJobs {
 			for _, rawBuild := range multibranchJob.WorkflowJobBuilds {
-				if removeInProgressBuilds && buildIsInProgress(rawBuild) {
+				if err := rawBuild.validate(); err != nil {
+					c.logger.Printf("skipping build %s: %s", multibranchBuildID(multibranchJob, job, rawBuild), err)
+					continue
+				}
+
+				if removeBuildingBuilds && *rawBuild.Building {
 					continue
 				}
 
 				b, err := c.buildRawToBuild(multibranchJob.Name, job.Name, rawBuild)
 				if err != nil {
-					c.logger.Printf("skipping build %s/%s/%s: %s", multibranchJob.Name, job.Name, rawBuild.ID, err)
+					c.logger.Printf("skipping build %s: %s", multibranchBuildID(multibranchJob, job, rawBuild), err)
 					continue
 				}
 
@@ -120,7 +150,7 @@ func (c *Client) Builds(inProgressBuilds bool) ([]*Build, error) {
 	// TODO: is it possible to retrieve only the element in actions with
 	// _class = "jenkins.metrics.impl.TimeInQueueAction" that contains the
 	// metrics?
-	const queryBuilds = "builds[id,result,actions[_class,buildableTimeMillis,waitingTimeMillis,blockedTimeMillis,executingTimeMillis,buildingDurationMillis]]"
+	const queryBuilds = "builds[id,result,building,actions[_class,buildableTimeMillis,waitingTimeMillis,blockedTimeMillis,executingTimeMillis,buildingDurationMillis]]"
 	const endpoint = "api/json" +
 		"?tree=jobs[name,jobs[name," + queryBuilds + "]," + // multibranch jobs contain a job array that contain the builds
 		queryBuilds + // workflow jobs contain the builds in the top-level job
