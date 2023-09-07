@@ -41,7 +41,7 @@ const (
 )
 
 var logger = log.New(os.Stderr, "", 0)
-var promLogger = log.New(os.Stderr, "prometheus", 0)
+var promLogger = log.New(os.Stderr, "prometheus: ", 0)
 var debugLogger = log.New(io.Discard, "", 0)
 
 var (
