@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/jamiealquiza/envy"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	jenkinsexporter "github.com/simplesurance/jenkins-exporter/internal"
@@ -40,6 +41,7 @@ const (
 )
 
 var logger = log.New(os.Stderr, "", 0)
+var promLogger = log.New(os.Stderr, "prometheus: ", 0)
 var debugLogger = log.New(io.Discard, "", 0)
 
 var (
@@ -422,7 +424,17 @@ func main() {
 
 	logConfiguration()
 
-	http.Handle("/", promhttp.Handler())
+	http.Handle(
+		"/",
+		promhttp.InstrumentMetricHandler(
+			prometheus.DefaultRegisterer,
+			promhttp.HandlerFor(
+				prometheus.DefaultGatherer,
+				promhttp.HandlerOpts{ErrorLog: promLogger},
+			),
+		),
+	)
+
 	go func() {
 		logger.Printf("prometheus http server listening on %s", *listenAddr)
 		err := http.ListenAndServe(*listenAddr, nil)
