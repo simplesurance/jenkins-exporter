@@ -98,7 +98,7 @@ func multibranchBuildID(multibranchJob, job *jobRawResp, build *buildRawResp) st
 	return fmt.Sprintf("%s/%s/%s", multibranchJob.Name, job.Name, build.ID)
 }
 
-func (c *Client) respRawToBuilds(raw *respRaw, removeBuildingBuilds bool) []*Build {
+func (c *Client) respRawToBuilds(raw *respRaw) []*Build {
 	var res []*Build
 
 	for _, job := range raw.Jobs {
@@ -108,7 +108,7 @@ func (c *Client) respRawToBuilds(raw *respRaw, removeBuildingBuilds bool) []*Bui
 				continue
 			}
 
-			if removeBuildingBuilds && *rawBuild.Building {
+			if *rawBuild.Building {
 				continue
 			}
 
@@ -128,7 +128,7 @@ func (c *Client) respRawToBuilds(raw *respRaw, removeBuildingBuilds bool) []*Bui
 					continue
 				}
 
-				if removeBuildingBuilds && *rawBuild.Building {
+				if *rawBuild.Building {
 					continue
 				}
 
@@ -146,7 +146,7 @@ func (c *Client) respRawToBuilds(raw *respRaw, removeBuildingBuilds bool) []*Bui
 	return res
 }
 
-func (c *Client) Builds(inProgressBuilds bool) ([]*Build, error) {
+func (c *Client) Builds() ([]*Build, error) {
 	// TODO: is it possible to retrieve only the element in actions with
 	// _class = "jenkins.metrics.impl.TimeInQueueAction" that contains the
 	// metrics?
@@ -162,7 +162,7 @@ func (c *Client) Builds(inProgressBuilds bool) ([]*Build, error) {
 		return nil, err
 	}
 
-	builds := c.respRawToBuilds(&resp, !inProgressBuilds)
+	builds := c.respRawToBuilds(&resp)
 
 	return builds, nil
 }

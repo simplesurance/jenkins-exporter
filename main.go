@@ -206,7 +206,7 @@ func recordBuildStageJobInAllowList(b *jenkins.Build) bool {
 func fetchAndRecord(clt *jenkins.Client, store *store.Store, onlyRecordNewbuilds bool, metrics *jenkinsexporter.Metrics) error {
 	fetchStart := time.Now()
 
-	builds, err := clt.Builds(false)
+	builds, err := clt.Builds()
 	if err != nil {
 		return err
 	}
