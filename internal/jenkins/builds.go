@@ -119,10 +119,6 @@ func (c *Client) respRawToBuilds(raw *respRaw) []*Build {
 				continue
 			}
 
-			if *rawBuild.Building {
-				continue
-			}
-
 			b, err := c.buildRawToBuild(job.Name, "", rawBuild)
 			if err != nil {
 				c.logger.Printf("skipping build %s: %s", buildID(job, rawBuild), err)
@@ -136,10 +132,6 @@ func (c *Client) respRawToBuilds(raw *respRaw) []*Build {
 			for _, rawBuild := range multibranchJob.WorkflowJobBuilds {
 				if err := rawBuild.validate(); err != nil {
 					c.logger.Printf("skipping build %s: %s", multibranchBuildID(multibranchJob, job, rawBuild), err)
-					continue
-				}
-
-				if *rawBuild.Building {
 					continue
 				}
 

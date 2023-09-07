@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -149,6 +150,8 @@ func recordBuildMetric(c *jenkinsexporter.Metrics, b *jenkins.Build) {
 	if *recordWaitingTime {
 		recordJobDurationMetric(c, jobName, branchLabel, "waiting_time", b.Result, b.WaitingTime)
 	}
+
+	logger.Printf("recorded metrics for build %s", b.String())
 }
 
 func buildsByJob(builds []*jenkins.Build) map[string][]*jenkins.Build {
@@ -197,12 +200,23 @@ func recordBuildStageJobInAllowList(b *jenkins.Build) bool {
 	return exists
 }
 
-func fetchAndRecord(clt *jenkins.Client, store *store.Store, onlyRecordNewbuilds bool, metrics *jenkinsexporter.Metrics) error {
+func recordMetrics(clt *jenkins.Client, metrics *jenkinsexporter.Metrics, b *jenkins.Build, recordJobMetrics, recordperStageMetrics bool) {
+	if recordJobMetrics {
+		recordBuildMetric(metrics, b)
+	}
+	if recordperStageMetrics {
+		fetchAndRecordStageMetric(clt, metrics, b)
+	}
+}
+
+func fetchAndRecord(clt *jenkins.Client, stateStore *store.Store, onlyRecordNewbuilds bool, metrics *jenkinsexporter.Metrics) {
 	fetchStart := time.Now()
 
 	builds, err := clt.Builds()
 	if err != nil {
-		return err
+		logger.Printf("fetching build from jenkins failed: %s", err)
+		metrics.Errors.WithLabelValues("jenkins_api").Inc()
+		return
 	}
 
 	logger.Printf("retrieved %d builds from jenkins in %s", len(builds), time.Since(fetchStart))
@@ -219,7 +233,7 @@ func fetchAndRecord(clt *jenkins.Client, store *store.Store, onlyRecordNewbuilds
 		// <MultiBranchJobName>/<JobName>. The whitelist contains
 		// either the MultiBranchJobName or the JobName
 		// TODO: would be more efficient to only retrieve the information for the jobs
-		// that we are interesting in from the API, instead of retrieving all
+		// that we are interested in from the API, instead of retrieving all
 		// and ignoring some
 		recordJobMetrics := jobIsInAllowList(builds[0])
 		recordperStageMetrics := *recordBuildStageMetric && recordBuildStageJobInAllowList(builds[0])
@@ -227,47 +241,68 @@ func fetchAndRecord(clt *jenkins.Client, store *store.Store, onlyRecordNewbuilds
 			continue
 		}
 
-		highestID, exist := store.Get(job)
-		if !exist && onlyRecordNewbuilds {
-			// If a new state file was created and we do not have
-			// a record for the build, do not record metrics for
-			// builds that already existed in the first iteration.
-			// On a subsequent runs new builds will be recorded.
-			// This prevents that we record multiple times the
-			// same builds if the state store file of the the
-			// previous execution was deleted but metrics for jobs
-			// were recorded in Prometheus.
+		highestID := builds[0].ID
 
-			store.Set(job, builds[0].ID)
-			debugLogger.Printf("%s: seen the first time and state file did not exist, skipping existing builds, highest build ID: %d", job, builds[0].ID)
-			continue
+		storeBuild := stateStore.Get(job)
+		if storeBuild == nil {
+			if onlyRecordNewbuilds {
+				// If a new state file was created and we do not have
+				// a record for the build, do not record metrics for
+				// builds that already existed in the first iteration.
+				// On a subsequent runs new builds will be recorded.
+				// This prevents that we record multiple times the
+				// same builds if the state store file of the the
+				// previous execution was deleted but metrics for jobs
+				// were recorded in Prometheus.
+
+				stateStore.NewBuild(job, highestID)
+				logger.Printf("%s: was seen the first time and state file did not exist, skipping recording metrics for builds with IDs <= %d", job, highestID)
+				continue
+			}
+
+			storeBuild = stateStore.NewBuild(job, 0)
 		}
-		if highestID > builds[0].ID {
-			debugLogger.Printf("%s: highest stored job ID is bigger then the one known by jenkins, resetting ID to: %d", job, builds[0].ID)
-			store.Set(job, builds[0].ID)
+
+		if storeBuild.HighestRecordedBuildID > highestID {
+			logger.Printf("%s: highest stored job ID is bigger then the one known by jenkins, resetting ID to: %d", job, highestID)
+			storeBuild.SetHighestRecordedBuildID(highestID)
+			continue
 		}
 
 		for _, b := range builds {
-			if b.ID <= highestID {
+			if storeBuild.UnrecordedBuildIDsIsEmpty() && b.ID <= storeBuild.HighestRecordedBuildID {
 				// all following builds are known
 				break
 			}
 
-			if recordJobMetrics {
-				recordBuildMetric(metrics, b)
+			if !b.Building {
+				if b.ID > storeBuild.HighestRecordedBuildID {
+					recordMetrics(clt, metrics, b, recordJobMetrics, recordperStageMetrics)
+					storeBuild.SetHighestRecordedBuildID(b.ID)
+					debugLogger.Printf("%s: new highest recorded build id: %d", b.FullJobName(), b.ID)
+					continue
+				}
+
+				if storeBuild.IsUnrecorded(b.ID) {
+					recordMetrics(clt, metrics, b, recordJobMetrics, recordperStageMetrics)
+					storeBuild.DeleteUnrecorded(b.ID)
+					continue
+				}
 			}
-			if recordperStageMetrics {
-				fetchAndRecordStageMetric(clt, metrics, b)
+
+			// build still in progress
+			if b.ID < storeBuild.HighestRecordedBuildID {
+				if storeBuild.AddUnrecorded(b.ID) {
+					debugLogger.Printf("%s: build still in progress, metrics will be recorded later", b)
+				}
+				continue
 			}
-		}
-		if builds[0].ID > highestID {
-			logger.Printf("%s: recorded metrics for %d build(s), new highest build ID: %d", job, builds[0].ID-highestID, builds[0].ID)
-			debugLogger.Printf("%s: highest seen build ID is %d", job, builds[0].ID)
-			store.Set(job, builds[0].ID)
+
+			// if b.ID is bigger then the highest recorded one, it
+			// will be evaluated the next time again when it is
+			// fetched, nothing to do
 		}
 	}
-
-	return nil
 }
 
 func fetchAndRecordStageMetric(clt *jenkins.Client, metrics *jenkinsexporter.Metrics, b *jenkins.Build) {
@@ -331,6 +366,7 @@ func recordStagesMetric(metrics *jenkinsexporter.Metrics, b *jenkins.Build, stag
 		}
 
 		metrics.BuildStage.With(labels).Observe(float64(stage.Duration / time.Second))
+		logger.Printf("recorded stage metrics for build %s, stage: %s", b, stage.Name)
 	}
 }
 
@@ -342,7 +378,11 @@ func loadOrCreateStateStore() (isNewStore bool, _ *store.Store) {
 			return true, store.New()
 		}
 
-		logger.Fatalf("loading state file failed: %s", err)
+		if errors.Is(err, store.ErrIncompatibleFormat) {
+			logger.Fatalf("ERROR: loading state file failed: %s. Either delete %q or specify a different file to use.", err, *stateFilePath)
+		}
+
+		logger.Fatalf("ERROR: loading state file failed: %s", err)
 	}
 
 	logger.Printf("state loaded from '%s'", *stateFilePath)
@@ -439,7 +479,7 @@ func main() {
 		logger.Printf("prometheus http server listening on %s", *listenAddr)
 		err := http.ListenAndServe(*listenAddr, nil)
 		if err != http.ErrServerClosed {
-			logger.Fatal("prometheus http server terminated:", err.Error())
+			logger.Fatal("ERROR: prometheus http server terminated:", err.Error())
 		}
 
 	}()
@@ -458,16 +498,14 @@ func main() {
 	nextStateStoreCleanup := time.Now()
 
 	for {
-		err := fetchAndRecord(clt, stateStore, isNewStore, metrics)
-		if err != nil {
-			logger.Printf("fetching and recording builds metrics failed: %s", err)
-			metrics.Errors.WithLabelValues("jenkins_api").Inc()
-		}
+		fetchAndRecord(clt, stateStore, isNewStore, metrics)
 
 		if nextStateStoreCleanup.Before(time.Now()) {
-			cnt := stateStore.RemoveOldEntries(*maxStateAge)
+			cntBuilds := stateStore.RemoveOldBuilds(*maxStateAge)
+			cntUnrecorded := stateStore.RemoveOldUnrecordedEntries(*maxStateAge)
 			nextStateStoreCleanup = time.Now().Add(stateStoreCleanupInterval)
-			logger.Printf("removed %d expired entries from the state store, next cleanup in %s", cnt, stateStoreCleanupInterval)
+			logger.Printf("removed %d expired build and %d expired unrecorded build entries from state store, next cleanup in %s",
+				cntBuilds, cntUnrecorded, stateStoreCleanupInterval)
 		}
 
 		logger.Printf("fetching and recording the next build metrics in %s", *pollInterval)
