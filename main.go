@@ -155,15 +155,9 @@ func buildsByJob(builds []*jenkins.Build) map[string][]*jenkins.Build {
 	res := map[string][]*jenkins.Build{}
 
 	for _, b := range builds {
-		var jobName string
-
-		if b.MultiBranchJobName != "" {
-			jobName = b.MultiBranchJobName + "/"
-		}
-		jobName += b.JobName
+		jobName := b.FullJobName()
 
 		jobBuilds := res[jobName]
-
 		res[jobName] = append(jobBuilds, b)
 	}
 
@@ -318,7 +312,13 @@ func recordStagesMetric(metrics *jenkinsexporter.Metrics, b *jenkins.Build, stag
 			continue
 		}
 
-		if *ignoreUnsuccessfulBuildStages && !strings.EqualFold(stage.Status, "success") {
+		if strings.EqualFold(stage.Status, "IN_PROGRESS") {
+			log.Printf("%s: skipping recording stage metrics for %q, stage status is %q, expected build to be finished. This should not happen, please open a bug report",
+				b, stage.Name, stage.Status)
+			continue
+		}
+
+		if *ignoreUnsuccessfulBuildStages && !strings.EqualFold(stage.Status, "SUCCESS") {
 			continue
 		}
 
