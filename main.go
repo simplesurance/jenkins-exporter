@@ -28,7 +28,7 @@ const (
 )
 
 // Version is set during compiliation via -ldflags.
-var Version string = "unknown"
+var Version = "unknown"
 
 const stateStoreCleanupInterval = 10 * 60 * time.Second
 
