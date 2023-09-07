@@ -390,6 +390,15 @@ func loadOrCreateStateStore() (isNewStore bool, _ *store.Store) {
 	return false, stateStore
 }
 
+func mustStoreToFile(s *store.Store) {
+	err := s.ToFile(*stateFilePath)
+	if err != nil {
+		logger.Fatalf("saving statefile failed: %s", err)
+	} else {
+		logger.Printf("state written to %s", *stateFilePath)
+	}
+}
+
 func registerSigHandler(s *store.Store) {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
@@ -398,13 +407,7 @@ func registerSigHandler(s *store.Store) {
 		sig := <-sigChan
 
 		logger.Printf("received %s signal, terminating...", sig)
-
-		err := s.ToFile(*stateFilePath)
-		if err != nil {
-			logger.Printf("saving statefile failed: %s", err)
-		} else {
-			logger.Printf("state written to %s", *stateFilePath)
-		}
+		mustStoreToFile(s)
 
 		os.Exit(0)
 	}()
@@ -499,6 +502,10 @@ func main() {
 
 	for {
 		fetchAndRecord(clt, stateStore, isNewStore, metrics)
+		if isNewStore {
+			mustStoreToFile(stateStore)
+			isNewStore = false
+		}
 
 		if nextStateStoreCleanup.Before(time.Now()) {
 			cntBuilds := stateStore.RemoveOldBuilds(*maxStateAge)
