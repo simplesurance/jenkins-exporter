@@ -47,6 +47,17 @@ type Build struct {
 	Building           bool
 }
 
+func (b *Build) FullJobName() string {
+	if b.MultiBranchJobName != "" {
+		return b.MultiBranchJobName + "/" + b.JobName
+	}
+	return b.JobName
+}
+
+func (b *Build) String() string {
+	return b.FullJobName() + " #" + fmt.Sprint(b.ID)
+}
+
 func (b *buildRawResp) validate() error {
 	if b.Building == nil {
 		return errors.New("Building field is missing (nil)")
