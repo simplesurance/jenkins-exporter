@@ -354,6 +354,8 @@ func recordStagesMetric(metrics *jenkinsexporter.Metrics, b *jenkins.Build, stag
 		}
 
 		if *ignoreUnsuccessfulBuildStages && !strings.EqualFold(stage.Status, "SUCCESS") {
+			debugLogger.Printf("%s: skipping recording stage metrics for %q, stage status is: %q, requiring 'SUCCESS'",
+				b, stage.Name, stage.Status)
 			continue
 		}
 
