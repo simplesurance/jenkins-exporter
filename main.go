@@ -392,12 +392,19 @@ func loadOrCreateStateStore() (isNewStore bool, _ *store.Store) {
 	return false, stateStore
 }
 
-func mustStoreToFile(s *store.Store) {
+func storeToFile(s *store.Store) error {
 	err := s.ToFile(*stateFilePath)
 	if err != nil {
-		logger.Fatalf("saving statefile failed: %s", err)
-	} else {
-		logger.Printf("state written to %s", *stateFilePath)
+		return fmt.Errorf("saving state file failed: %w", err)
+	}
+
+	logger.Printf("state written to %s", *stateFilePath)
+	return nil
+}
+
+func mustStoreToFile(s *store.Store) {
+	if err := storeToFile(s); err != nil {
+		log.Fatal(err)
 	}
 }
 
@@ -515,6 +522,9 @@ func main() {
 			nextStateStoreCleanup = time.Now().Add(stateStoreCleanupInterval)
 			logger.Printf("removed %d expired build and %d expired unrecorded build entries from state store, next cleanup in %s",
 				cntBuilds, cntUnrecorded, stateStoreCleanupInterval)
+			if err := storeToFile(stateStore); err != nil {
+				log.Println(err)
+			}
 		}
 
 		logger.Printf("fetching and recording the next build metrics in %s", *pollInterval)
