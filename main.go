@@ -229,6 +229,10 @@ func fetchAndRecord(clt *jenkins.Client, stateStore *store.Store, onlyRecordNewb
 			continue
 		}
 
+		// TODO: remove all jobs from the stateStore that Jenkins did
+		// not return. These jobs must have been deleted, therefore
+		// their state does not need to be kept in memory and on disk.
+
 		// We can not pass job here because it's in the format
 		// <MultiBranchJobName>/<JobName>. The whitelist contains
 		// either the MultiBranchJobName or the JobName
@@ -242,6 +246,13 @@ func fetchAndRecord(clt *jenkins.Client, stateStore *store.Store, onlyRecordNewb
 		}
 
 		highestID := builds[0].ID
+
+		// TODO: remove all builds from the UnrecordedBuildIDsIsEmpty
+		// map that have a smaller ID then the lowest ID that jenkins
+		// returned for the build.
+		// This must mean that jenkins deleted the history of job with
+		// those IDs and will never return information about them that
+		// we can record.
 
 		storeBuild := stateStore.Get(job)
 		if storeBuild == nil {
