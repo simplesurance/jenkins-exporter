@@ -515,7 +515,6 @@ func main() {
 		WithAuth(*jenkinsUsername, *jenkinsPassword).
 		WithLogger(debugLogger).
 		WithTimeout(*httpTimeout).
-		WithErrorMetrics(metrics.Errors).
 		WithRatelimit(*httpRequestRateEvery)
 
 	nextStateStoreCleanup := time.Now()
