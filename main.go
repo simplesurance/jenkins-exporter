@@ -28,7 +28,7 @@ const (
 	appName = "jenkins-exporter"
 )
 
-// Version is set during compiliation via -ldflags.
+// Version is set during compilation via -ldflags.
 var Version = "unknown"
 
 const stateStoreCleanupInterval = 10 * 60 * time.Second
