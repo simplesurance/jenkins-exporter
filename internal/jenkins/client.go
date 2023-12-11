@@ -99,7 +99,7 @@ func (c *Client) do(method, url string, result interface{}) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		_, _ = io.ReadAll(resp.Body)
+		_, _ = io.Copy(io.Discard, resp.Body)
 		return &ErrHTTPRequestFailed{Code: resp.StatusCode}
 	}
 
