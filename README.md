@@ -33,18 +33,16 @@ It provides the following Prometheus metrics:
 - Counter:
   - `jenkins_exporter_errors`  
     Counts the number of errors the jenkins-exporter encountered when fetching
-    informations from the Jenkins API.
+    information from the Jenkins API.
     - Labels:
       - type:
         - jenkins_api
         - jenkins_wfapi
-  - `jenkins_http_requests_total`  
-    Counts the number of http-requests sent successfully to Jenkins.
 
 By default job metrics are recorded for every finished Jenkins build. The
 Jenkins jobs for that builds are recorded can be limited with the
 `--jenkins-job-whitelist` command-line parameter.
-The duration types that are recorded can also be configured via a commandline
+The duration types that are recorded can also be configured via a command-line
 parameter.
 
 The exporter can also record durations of individual pipeline stages. This
@@ -82,7 +80,7 @@ make
 
 Then copy the jenkins-exporter into your `$PATH`.
 
-### As systemd Service ###
+### As Systemd Service ###
 
 1. Install `jenkins-exporter` to `/usr/local/bin`
 2. `cp dist/etc/default/jenkins-exporter /etc/default/`
