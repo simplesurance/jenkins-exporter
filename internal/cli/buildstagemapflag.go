@@ -6,7 +6,7 @@ import "strings"
 // "<JOB-NAME>:<STAGE-NAME>,..."
 // into a map[JOB-NAME]map[STAGE-NAME]struct{} datastructure.
 // If an elem ends with a "," it is interpreted as being on the Job-Name.
-// Later elemens overwrite earlier elements.
+// Later element overwrite earlier elements.
 type BuildStageMapFlag map[string]map[string]struct{}
 
 func (b BuildStageMapFlag) Set(v string) error {
