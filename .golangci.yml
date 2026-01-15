@@ -1,4 +1,4 @@
-version: 2
+version: "2"
 
 linters:
   enable:
@@ -16,11 +16,9 @@ linters:
     - unconvert
     - unused
     - usestdlibvars
-
-linters-settings:
-  goimports:
-    local-prefixes: github.com/simplesurance/jenkins-exporter
-
 formatters:
   enable:
     - goimports
+  settings:
+    goimports:
+      local-prefixes: github.com/simplesurance/jenkins-exporter
