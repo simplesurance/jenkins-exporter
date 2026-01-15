@@ -1,11 +1,11 @@
 module github.com/simplesurance/jenkins-exporter
 
-go 1.23.0
+go 1.24.0
 
 require (
 	github.com/jamiealquiza/envy v1.1.0
 	github.com/prometheus/client_golang v1.23.2
-	golang.org/x/time v0.9.0
+	golang.org/x/time v0.14.0
 )
 
 require (
