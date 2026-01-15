@@ -21,4 +21,5 @@ formatters:
     - goimports
   settings:
     goimports:
-      local-prefixes: github.com/simplesurance/jenkins-exporter
+      local-prefixes:
+        - github.com/simplesurance/jenkins-exporter
