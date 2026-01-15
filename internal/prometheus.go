@@ -1,18 +1,23 @@
+// Package jenkinsexporter is the root internal package.
 package jenkinsexporter
 
 import "github.com/prometheus/client_golang/prometheus"
 
 const (
-	BuildStageMetricName  = "stage_duration_seconds"
+	// BuildStageMetricName is the name of the build stage duration metric.
+	BuildStageMetricName = "stage_duration_seconds"
+	// JobDurationMetricName is the name of the job duration metric.
 	JobDurationMetricName = "job_duration_seconds"
 )
 
+// Metrics holds all prometheus metric vectors.
 type Metrics struct {
 	BuildStage  *prometheus.HistogramVec
 	JobDuration *prometheus.HistogramVec
 	Errors      *prometheus.CounterVec
 }
 
+// MustNewMetrics initializes and registers all prometheus metrics. Panics on error.
 func MustNewMetrics(namespace string, buckets []float64) *Metrics {
 	result := Metrics{
 		BuildStage: prometheus.NewHistogramVec(

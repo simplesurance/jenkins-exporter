@@ -6,6 +6,7 @@ import (
 	"strings"
 )
 
+// Float64Slice is a flag.Value implementation for float64 slices.
 type Float64Slice []float64
 
 func (u *Float64Slice) String() string {
@@ -24,6 +25,7 @@ func (u *Float64Slice) String() string {
 	return str
 }
 
+// Set implements the flag.Value interface.
 func (u *Float64Slice) Set(v string) error {
 	*u = nil
 

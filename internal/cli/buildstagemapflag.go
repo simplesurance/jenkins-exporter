@@ -1,3 +1,4 @@
+// Package cli implements flag.Value interfaces for command line flag parsing.
 package cli
 
 import "strings"
@@ -9,6 +10,7 @@ import "strings"
 // Later element overwrite earlier elements.
 type BuildStageMapFlag map[string]map[string]struct{}
 
+// Set implements the flag.Value interface
 func (b BuildStageMapFlag) Set(v string) error {
 	for _, elem := range strings.Split(v, ",") {
 		idx := strings.LastIndex(elem, ":")

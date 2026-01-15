@@ -17,6 +17,7 @@ type respWFAPIStageRaw struct {
 	DurationMillis int64  `json:"durationMillis"`
 }
 
+// Stage holds metric data for a single jenkins build stage.
 type Stage struct {
 	Name     string
 	Status   string
@@ -47,6 +48,7 @@ func (c *Client) wfapiJobBuildURL(jobName, multibranchJobName, buildID string) (
 	return url.JoinPath(c.serverURL, "job", multibranchJobName, "job", jobName, buildID, "wfapi")
 }
 
+// Stages returns the metrics for all stages of a specific build.
 func (c *Client) Stages(jobName, multibranchJobName string, buildID int64) ([]*Stage, error) {
 	var resp respWFAPIRaw
 

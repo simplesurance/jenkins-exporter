@@ -37,6 +37,7 @@ func (s MapStrMapStrFlag) String() string {
 	return result.String()
 }
 
+// Set implements the flag.Value interface.
 func (s MapStrMapStrFlag) Set(v string) error {
 	for _, elem := range strings.Split(v, ";") {
 		jobname, strbranchNames, found := strings.Cut(elem, ":")
