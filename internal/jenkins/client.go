@@ -12,6 +12,7 @@ import (
 	"golang.org/x/time/rate"
 )
 
+// APISuffix is the suffix of jenkins API URLs.
 const APISuffix = "api/json"
 
 var defaultLogger = log.New(io.Discard, "", 0)
@@ -21,6 +22,7 @@ type auth struct {
 	password string
 }
 
+// Client is a client for the jenkins API.
 type Client struct {
 	client    http.Client
 	auth      *auth
@@ -29,18 +31,21 @@ type Client struct {
 	limiter   *rate.Limiter
 }
 
+// WithAuth configures the client to use basic auth for all requests.
 func (c *Client) WithAuth(username, password string) *Client {
 	c.auth = &auth{username: username, password: password}
 
 	return c
 }
 
+// WithTimeout sets the http timeout for all requests.
 func (c *Client) WithTimeout(timeout time.Duration) *Client {
 	c.client.Timeout = timeout
 
 	return c
 }
 
+// WithLogger sets the logger used by the client.
 func (c *Client) WithLogger(l *log.Logger) *Client {
 	c.logger = l
 
@@ -55,6 +60,7 @@ func (c *Client) WithRatelimit(interval time.Duration) *Client {
 	return c
 }
 
+// NewClient returns a new jenkins API client.
 func NewClient(url string) *Client {
 	if len(url) > 0 && url[len(url)-1] != '/' {
 		url += "/"
@@ -68,6 +74,7 @@ func NewClient(url string) *Client {
 	}
 }
 
+// ErrHTTPRequestFailed is an error for a failed http request.
 type ErrHTTPRequestFailed struct {
 	Code int
 }
@@ -96,7 +103,11 @@ func (c *Client) do(method, url string, result interface{}) error {
 		return err
 	}
 
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			c.logger.Printf("failed to close response body: %v", err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		_, _ = io.Copy(io.Discard, resp.Body)

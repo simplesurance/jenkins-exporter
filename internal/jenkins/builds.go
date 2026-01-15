@@ -1,3 +1,4 @@
+// Package jenkins implements a client for the jenkins API.
 package jenkins
 
 import (
@@ -34,6 +35,7 @@ type respRaw struct {
 	Jobs []*jobRawResp `json:"jobs"`
 }
 
+// Build holds metric data for a single jenkins build.
 type Build struct {
 	JobName            string
 	MultiBranchJobName string
@@ -47,6 +49,7 @@ type Build struct {
 	Building           bool
 }
 
+// FullJobName returns the full job name, including the multibranch job name if present.
 func (b *Build) FullJobName() string {
 	if b.MultiBranchJobName != "" {
 		return b.MultiBranchJobName + "/" + b.JobName
@@ -60,11 +63,11 @@ func (b *Build) String() string {
 
 func (b *buildRawResp) validate() error {
 	if b.Building == nil {
-		return errors.New("Building field is missing (nil)")
+		return errors.New("building field is missing (nil)")
 	}
 
 	if !*b.Building && b.Result == "" {
-		return errors.New("Building is false but build result is empty")
+		return errors.New("building is false but build result is empty")
 	}
 
 	return nil
@@ -149,6 +152,7 @@ func (c *Client) respRawToBuilds(raw *respRaw) []*Build {
 	return res
 }
 
+// Builds retrieves a list of all builds and their metrics from the jenkins server.
 func (c *Client) Builds() ([]*Build, error) {
 	// TODO: is it possible to retrieve only the element in actions with
 	// _class = "jenkins.metrics.impl.TimeInQueueAction" that contains the

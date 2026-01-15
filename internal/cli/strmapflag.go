@@ -2,6 +2,7 @@ package cli
 
 import "strings"
 
+// StrMapFlag is a flag.Value implementation for string maps.
 type StrMapFlag map[string]struct{}
 
 func (s *StrMapFlag) String() string {
@@ -20,6 +21,7 @@ func (s *StrMapFlag) String() string {
 	return str
 }
 
+// Set implements the flag.Value interface.
 func (s *StrMapFlag) Set(v string) error {
 	*s = StrMapFlag{}
 

@@ -1,3 +1,4 @@
+// Package main is the main package of the application.
 package main
 
 import (
@@ -459,7 +460,7 @@ func logConfiguration() {
 	str += fmt.Sprintf(fmtSpec, "Build Stage Allowlist", recordBuildStageJobAllowList.String())
 	str += fmt.Sprintf(fmtSpec, "Branch Label Allowlist", branchLabelAllowList.String())
 
-	logger.Printf(str)
+	logger.Print(str)
 }
 
 func validateFlags() {
