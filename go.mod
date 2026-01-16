@@ -1,6 +1,6 @@
 module github.com/simplesurance/jenkins-exporter
 
-go 1.25.5
+go 1.25.6
 
 require (
 	github.com/jamiealquiza/envy v1.1.0
