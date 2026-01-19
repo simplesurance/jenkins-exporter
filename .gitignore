@@ -1,5 +1,4 @@
 # Binaries for programs and plugins
-/baur
 *.exe
 *.dll
 *.so
@@ -20,5 +19,4 @@
 *.swo
 
 *.state.json
-/jenkins-exporter
-release/
+/dist
