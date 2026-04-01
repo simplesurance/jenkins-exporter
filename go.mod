@@ -5,7 +5,7 @@ go 1.25.6
 require (
 	github.com/jamiealquiza/envy v1.1.0
 	github.com/prometheus/client_golang v1.23.2
-	golang.org/x/time v0.14.0
+	golang.org/x/time v0.15.0
 )
 
 require (
